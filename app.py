@@ -3,6 +3,7 @@ import pandas as pd
 import joblib
 
 model = joblib.load("player_price_model.pkl")
+scaler = joblib.load("scaler.pkl")
 
 st.title("IPL Auction Price Predictor")
 
@@ -20,10 +21,12 @@ if st.button("Predict"):
         "wickets": wickets,
         "strike_rate": strike_rate,
         "average": average,
-        "base_price": base_price,
+        "base_price": base_price * 0.5,  # same adjustment as training
         "performance_score": performance_score
     }])
 
-    pred = model.predict(df)[0]
+    df_scaled = scaler.transform(df)
+
+    pred = model.predict(df_scaled)[0]
 
     st.success(f"Predicted Price: {round(pred,2)} Lakhs ({round(pred/100,2)} Cr)")
