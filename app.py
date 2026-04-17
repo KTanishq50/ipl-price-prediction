@@ -12,6 +12,14 @@ data = pd.read_csv("playerperformance.csv")
 # clean player names
 data["Player_Name"] = data["Player_Name"].str.lower().str.strip()
 
+# handle invalid values
+data = data.replace("No stats", np.nan)
+
+# convert numeric columns
+cols = ["Runs_Scored", "Wickets_Taken", "Batting_Strike_Rate", "Batting_Average"]
+for col in cols:
+    data[col] = pd.to_numeric(data[col], errors="coerce")
+
 st.title("IPL Auction Price Predictor")
 
 # predictions
@@ -57,7 +65,7 @@ if st.button("Predict"):
 
     st.success(f"Predicted Price: {round(price,2)} Lakhs ({round(price/100,2)} Cr)")
 
-# player nalysis
+# player analysis
 
 st.markdown("---")
 st.header("Player Analysis")
@@ -82,19 +90,19 @@ if search_name:
 
         st.subheader("Latest Performance")
         st.write({
-            "Runs": latest["Runs_Scored"],
-            "Wickets": latest["Wickets_Taken"],
-            "Strike Rate": latest["Batting_Strike_Rate"],
-            "Average": latest["Batting_Average"]
+            "Runs": int(latest["Runs_Scored"]) if pd.notna(latest["Runs_Scored"]) else 0,
+            "Wickets": int(latest["Wickets_Taken"]) if pd.notna(latest["Wickets_Taken"]) else 0,
+            "Strike Rate": float(latest["Batting_Strike_Rate"]) if pd.notna(latest["Batting_Strike_Rate"]) else 0,
+            "Average": float(latest["Batting_Average"]) if pd.notna(latest["Batting_Average"]) else 0
         })
 
         # metrics
         st.subheader("Performance Metrics")
 
         col1, col2, col3 = st.columns(3)
-        col1.metric("Avg Runs", round(player_data["Runs_Scored"].mean(), 2))
-        col2.metric("Max Runs", int(player_data["Runs_Scored"].max()))
-        col3.metric("Avg Wickets", round(player_data["Wickets_Taken"].mean(), 2))
+        col1.metric("Avg Runs", round(player_data["Runs_Scored"].mean(skipna=True), 2))
+        col2.metric("Max Runs", int(player_data["Runs_Scored"].max(skipna=True)))
+        col3.metric("Avg Wickets", round(player_data["Wickets_Taken"].mean(skipna=True), 2))
 
         # line charts
         st.subheader("Runs Over Years")
@@ -103,29 +111,29 @@ if search_name:
         st.subheader("Wickets Over Years")
         st.line_chart(player_data.set_index("Year")["Wickets_Taken"])
 
-        # histogram for runs
+        # histogram runs
         st.subheader("Runs Distribution")
-        runs_hist = np.histogram(player_data["Runs_Scored"], bins=5)
+        runs_hist = np.histogram(player_data["Runs_Scored"].dropna(), bins=5)
         st.bar_chart(runs_hist[0])
 
-        # histogram for wickets
+        # histogram wickets
         st.subheader("Wickets Distribution")
-        wickets_hist = np.histogram(player_data["Wickets_Taken"], bins=5)
+        wickets_hist = np.histogram(player_data["Wickets_Taken"].dropna(), bins=5)
         st.bar_chart(wickets_hist[0])
 
         # career summary
         st.subheader("Career Summary")
         st.write({
-            "Total Runs": int(player_data["Runs_Scored"].sum()),
-            "Total Wickets": int(player_data["Wickets_Taken"].sum()),
+            "Total Runs": int(player_data["Runs_Scored"].sum(skipna=True)),
+            "Total Wickets": int(player_data["Wickets_Taken"].sum(skipna=True)),
             "Years Played": player_data["Year"].nunique()
         })
 
         # insights
         st.subheader("Insights")
 
-        avg_runs = player_data["Runs_Scored"].mean()
-        avg_wickets = player_data["Wickets_Taken"].mean()
+        avg_runs = player_data["Runs_Scored"].mean(skipna=True)
+        avg_wickets = player_data["Wickets_Taken"].mean(skipna=True)
 
         if avg_runs > avg_wickets * 20:
             st.write("Batting dominant player")
