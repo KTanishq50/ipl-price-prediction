@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import joblib
 import numpy as np
+import matplotlib.pyplot as plt
 
 model = joblib.load("player_price_model.pkl")
 scaler = joblib.load("scaler.pkl")
@@ -23,7 +24,6 @@ for col in cols:
 st.title("IPL Auction Price Predictor")
 
 # predictions
-
 runs = st.number_input("Runs", value=300.0, step=1.0)
 wickets = st.number_input("Wickets", value=5.0, step=1.0)
 strike_rate = st.number_input("Strike Rate", value=130.0, step=0.1)
@@ -82,10 +82,8 @@ if search_name:
     else:
         st.success("Player found")
 
-        # sort by year
         player_data = player_data.sort_values("Year")
 
-        # latest stats
         latest = player_data.iloc[-1]
 
         st.subheader("Latest Performance")
@@ -96,44 +94,76 @@ if search_name:
             "Average": float(latest["Batting_Average"]) if pd.notna(latest["Batting_Average"]) else 0
         })
 
-        # metrics
+        #metrics
         st.subheader("Performance Metrics")
 
         col1, col2, col3 = st.columns(3)
-        col1.metric("Avg Runs", round(player_data["Runs_Scored"].mean(skipna=True), 2))
-        col2.metric("Max Runs", int(player_data["Runs_Scored"].max(skipna=True)))
-        col3.metric("Avg Wickets", round(player_data["Wickets_Taken"].mean(skipna=True), 2))
 
-        # line charts
+        avg_runs = player_data["Runs_Scored"].mean(skipna=True)
+        max_runs = player_data["Runs_Scored"].max(skipna=True)
+        avg_wickets = player_data["Wickets_Taken"].mean(skipna=True)
+
+        col1.metric("Avg Runs", round(avg_runs, 2) if pd.notna(avg_runs) else 0)
+        col2.metric("Max Runs", int(max_runs) if pd.notna(max_runs) else 0)
+        col3.metric("Avg Wickets", round(avg_wickets, 2) if pd.notna(avg_wickets) else 0)
+
+        # runs line graoh
         st.subheader("Runs Over Years")
-        st.line_chart(player_data.set_index("Year")["Runs_Scored"])
 
+        fig, ax = plt.subplots()
+        ax.plot(player_data["Year"], player_data["Runs_Scored"])
+        ax.set_xlabel("Year")
+        ax.set_ylabel("Runs")
+        ax.set_title("Runs vs Year")
+        st.pyplot(fig)
+
+        #wicket line graph
         st.subheader("Wickets Over Years")
-        st.line_chart(player_data.set_index("Year")["Wickets_Taken"])
 
-        # histogram runs
+        fig, ax = plt.subplots()
+        ax.plot(player_data["Year"], player_data["Wickets_Taken"])
+        ax.set_xlabel("Year")
+        ax.set_ylabel("Wickets")
+        ax.set_title("Wickets vs Year")
+        st.pyplot(fig)
+
+        # runs histogram
         st.subheader("Runs Distribution")
-        runs_hist = np.histogram(player_data["Runs_Scored"].dropna(), bins=5)
-        st.bar_chart(runs_hist[0])
 
-        # histogram wickets
+        if player_data["Runs_Scored"].dropna().sum() == 0:
+            st.info("No runs data available")
+        else:
+            fig, ax = plt.subplots()
+            ax.hist(player_data["Runs_Scored"].dropna(), bins=5)
+            ax.set_xlabel("Runs")
+            ax.set_ylabel("Frequency (Years)")
+            ax.set_title("Runs Distribution")
+            st.pyplot(fig)
+
+        # wicket histogram
         st.subheader("Wickets Distribution")
-        wickets_hist = np.histogram(player_data["Wickets_Taken"].dropna(), bins=5)
-        st.bar_chart(wickets_hist[0])
 
-        # career summary
+        if player_data["Wickets_Taken"].dropna().sum() == 0:
+            st.info("No wicket data available")
+        else:
+            fig, ax = plt.subplots()
+            ax.hist(player_data["Wickets_Taken"].dropna(), bins=5)
+            ax.set_xlabel("Wickets")
+            ax.set_ylabel("Frequency (Years)")
+            ax.set_title("Wickets Distribution")
+            st.pyplot(fig)
+
+        # carreer summary
         st.subheader("Career Summary")
+
         st.write({
             "Total Runs": int(player_data["Runs_Scored"].sum(skipna=True)),
             "Total Wickets": int(player_data["Wickets_Taken"].sum(skipna=True)),
-            "Years Played": player_data["Year"].nunique()
+            "Years Played": int(player_data["Year"].nunique())
         })
 
         # insights
         st.subheader("Insights")
-
-        avg_runs = player_data["Runs_Scored"].mean(skipna=True)
-        avg_wickets = player_data["Wickets_Taken"].mean(skipna=True)
 
         if avg_runs > avg_wickets * 20:
             st.write("Batting dominant player")
