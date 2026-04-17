@@ -11,33 +11,33 @@ scaler = joblib.load("scaler.pkl")
 # load dataset
 data = pd.read_csv("playerperformance.csv")
 
-# clean player names
+# clean names
 data["Player_Name"] = data["Player_Name"].str.lower().str.strip()
 
-# replace invalid values
+# handle invalid values
 data = data.replace("No stats", np.nan)
 
-# convert columns to numeric
+# convert to numeric
 cols = ["Runs_Scored", "Wickets_Taken", "Batting_Strike_Rate", "Batting_Average"]
 for col in cols:
     data[col] = pd.to_numeric(data[col], errors="coerce")
 
 st.title("IPL Auction Price Predictor")
 
-# input fields
+# inputs
 runs = st.number_input("Runs", value=300.0, step=1.0)
 wickets = st.number_input("Wickets", value=5.0, step=1.0)
 strike_rate = st.number_input("Strike Rate", value=130.0, step=0.1)
 average = st.number_input("Average", value=30.0, step=0.1)
 base_price = st.number_input("Base Price (Lakhs)", value=50.0, step=1.0)
 
-# player type input
+# type selection
 player_type = st.selectbox("Player Type", ["Batter", "Bowler", "All-rounder", "WK-Batter"])
 
 # prediction
 if st.button("Predict"):
 
-    # create input dataframe
+    # create input df
     df = pd.DataFrame([{
         "runs": runs,
         "wickets": wickets,
@@ -46,13 +46,13 @@ if st.button("Predict"):
         "base_price": base_price * 0.5
     }])
 
-    # add type columns
+    # one-hot encoding
     df["Type_Batter"] = 1 if player_type == "Batter" else 0
     df["Type_Bowler"] = 1 if player_type == "Bowler" else 0
     df["Type_All-rounder"] = 1 if player_type == "All-rounder" else 0
     df["Type_WK-Batter"] = 1 if player_type == "WK-Batter" else 0
 
-    # match training columns
+    # align columns
     model_features = scaler.feature_names_in_
     for col in model_features:
         if col not in df.columns:
@@ -67,7 +67,7 @@ if st.button("Predict"):
     pred_log = model.predict(df_scaled)[0]
     price = np.expm1(pred_log)
 
-    # adjust and clamp
+    # adjust output
     price = price * 2
     price = max(20, min(price, 500))
 
@@ -117,7 +117,7 @@ if search_name:
         col2.metric("Max Runs", int(max_runs) if pd.notna(max_runs) else 0)
         col3.metric("Avg Wickets", round(avg_wickets, 2) if pd.notna(avg_wickets) else 0)
 
-        # runs graph
+        # runs line graph
         st.subheader("Runs Over Years")
 
         fig, ax = plt.subplots()
@@ -130,7 +130,7 @@ if search_name:
         plt.tight_layout()
         st.pyplot(fig, use_container_width=True)
 
-        # wickets graph
+        # wickets line graph
         st.subheader("Wickets Over Years")
 
         fig, ax = plt.subplots()
@@ -143,41 +143,36 @@ if search_name:
         plt.tight_layout()
         st.pyplot(fig, use_container_width=True)
 
-        # runs histogram
-        st.subheader("Runs Distribution")
+        # runs bar chart
+        st.subheader("Runs Per Year")
 
-        runs_data = player_data["Runs_Scored"].dropna()
+        fig, ax = plt.subplots()
+        ax.bar(player_data["Year"], player_data["Runs_Scored"])
+        ax.set_xlabel("Year")
+        ax.set_ylabel("Runs")
+        ax.set_title("Runs per Year")
+        ax.tick_params(axis='x', rotation=45)
+        plt.tight_layout()
+        st.pyplot(fig, use_container_width=True)
 
-        if runs_data.nunique() <= 1:
-            st.info("Not enough variation in runs data")
-        else:
-            fig, ax = plt.subplots()
-            ax.hist(runs_data, bins=5)
-            ax.set_xlabel("Runs (per season)")
-            ax.set_ylabel("Frequency (Years)")
-            ax.set_title("Runs Distribution")
-            plt.tight_layout()
-            st.pyplot(fig, use_container_width=True)
+        # wickets bar chart
+        st.subheader("Wickets Per Year")
 
-        # wickets histogram
-        st.subheader("Wickets Distribution")
+        wickets_clean = player_data["Wickets_Taken"].dropna()
 
-        wickets_data = player_data["Wickets_Taken"].dropna()
-
-        if wickets_data.nunique() <= 1:
+        if wickets_clean.nunique() <= 1:
             st.info("Not enough variation in wicket data")
         else:
             fig, ax = plt.subplots()
-            wickets_data = wickets_data.astype(int)
-            bins = range(int(wickets_data.min()), int(wickets_data.max()) + 2)
-            ax.hist(wickets_data, bins=bins, align='left')
-            ax.set_xlabel("Wickets (per season)")
-            ax.set_ylabel("Frequency (Years)")
-            ax.set_title("Wickets Distribution")
+            ax.bar(player_data["Year"], player_data["Wickets_Taken"])
+            ax.set_xlabel("Year")
+            ax.set_ylabel("Wickets")
+            ax.set_title("Wickets per Year")
+            ax.tick_params(axis='x', rotation=45)
             plt.tight_layout()
             st.pyplot(fig, use_container_width=True)
 
-        # career summary
+        # summary
         st.subheader("Career Summary")
 
         st.write({
